@@ -1,0 +1,77 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gold Miner Grammar A1</title><style>body{margin:0;background:#172638;color:white;font-family:system-ui;text-align:center}header{padding:10px;background:#253c53}h2{margin:5px}canvas{width:min(96vw,900px);height:auto;border:5px solid #edbc54;border-radius:15px;touch-action:manipulation;background:#a7e2fa}select{font-size:17px;padding:10px;border-radius:10px}button{font-size:18px;border:0;border-radius:12px;padding:12px 18px;margin:6px;background:#ffd365;color:#253044;font-weight:800;cursor:pointer}.modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:15px}.panel{background:#fff;color:#24344a;border-radius:20px;padding:24px;max-width:520px;width:90%;box-shadow:0 20px 50px #0006}.answers{display:grid;grid-template-columns:1fr 1fr}.answers button{background:#dfeeff}.small{font-size:14px;color:#cbd8e6}#feedback{min-height:42px;font-weight:bold}</style><header><h2>⛏️ GOLD MINER: GRAMMAR ADVENTURE 💎</h2><div id="stats"></div></header><p>Nhấn THẢ MÓC, SPACE hoặc chạm vào mỏ để thả móc. Trả lời đúng để nhận vàng! Mỗi vòng 5 phút (đồng hồ tạm dừng khi trả lời câu hỏi).</p><canvas id="game" width="900" height="540"></canvas><div><label for="difficulty">Độ khó: </label><select id="difficulty"><option value="easy">Easy (90 câu)</option><option value="normal">Normal (90 câu)</option><option value="hard">Hard (150 câu)</option></select><button id="start">▶ Bắt đầu / Chơi lại</button><button id="launch" type="button">⛏️ THẢ MÓC</button><button id="sound">🔊 Âm thanh: Bật</button></div><div class="small">A1 • am/is/are • do/does • Present Simple • S/ES/IES • Phủ định</div><div class="modal" id="modal"><div class="panel"><h2 id="question"></h2><div class="answers" id="answers"></div><p id="feedback"></p><button id="continue" style="display:none">Tiếp tục ⛏️</button></div></div><script>
+const cvs=document.getElementById('game'),ctx=cvs.getContext('2d'),stats=document.getElementById('stats'),modal=document.getElementById('modal');let score=0,level=1,time=300,playing=false,paused=false,items=[],angle=0,dir=1,hook={mode:'swing',len:48,target:null},last=0,sound=true,audio;
+// 50 sentences per sentence type; Easy/Normal use the first 30 of each.
+const subjects=[
+ ['I','first','sing'],['you','other','plural'],['he','third','sing'],['she','third','sing'],['we','other','plural'],['they','other','plural'],
+ ['my brother','third','sing'],['his sister','third','sing'],['her father','third','sing'],['our teacher','third','sing'],['the little boy','third','sing'],['my best friend','third','sing'],['his brother','third','sing'],['the cat','third','sing'],['your mother','third','sing'],['my cousin','third','sing'],['the doctor','third','sing'],['her grandmother','third','sing'],['the bus driver','third','sing'],['my uncle','third','sing'],
+ ['my friends','other','plural'],['his brothers','other','plural'],['her classmates','other','plural'],['our parents','other','plural'],['the children','other','plural'],['my cousins','other','plural'],['your teachers','other','plural'],['the students','other','plural'],['his friends','other','plural'],['the dogs','other','plural'],['my sister and I','other','plural'],['Tom and his brother','other','plural'],['the girls','other','plural'],['my father and mother','other','plural']
+];
+const verbs=[['play','plays','football','every Sunday'],['watch','watches','TV','after dinner'],['study','studies','English','every day'],['go','goes','to school','every morning'],['wash','washes','the dishes','at night'],['brush','brushes','my teeth','every morning'],['read','reads','books','on weekends'],['cook','cooks','dinner','every evening'],['do','does','homework','after school'],['have','has','breakfast','at seven'],['fix','fixes','bikes','on Saturdays'],['carry','carries','a bag','to school'],['drink','drinks','water','every day'],['teach','teaches','English','on Mondays'],['enjoy','enjoys','music','at home'],['visit','visits','grandma','on Sundays'],['clean','cleans','the room','every week'],['catch','catches','the bus','every morning'],['try','tries','new food','sometimes'],['eat','eats','rice','at lunchtime']];
+const beWords=[['happy','hạnh phúc'],['at home','ở nhà'],['a student','học sinh'],['tired','mệt'],['busy','bận'],['in the classroom','trong lớp'],['ready','sẵn sàng'],['hungry','đói'],['late','muộn'],['kind','tốt bụng']];
+const cap=t=>t[0].toUpperCase()+t.slice(1);
+const be=(sub)=>sub[0]==='I'?'am':sub[2]==='sing'?'is':'are';
+const aux=(sub)=>sub[2]==='sing'?'does':'do';
+function makeQ(type,i){
+ const sub=subjects[(i*7+Math.floor(i/subjects.length))%subjects.length],v=verbs[(i*11+Math.floor(i/verbs.length))%verbs.length],bw=beWords[i%beWords.length],isBe=i%3===0;
+ let stem,correct,choices,why;
+ const subject=cap(sub[0]);
+ if(type==='affirmative'){
+  if(isBe){correct=be(sub);stem=`${subject} ___ ${bw[0]}.`;choices=['am','is','are','does'];why=`${subject} là chủ ngữ ${sub[2]==='sing'?'số ít':'số nhiều hoặc I/you'} nên dùng ${correct}.`;}
+  else{correct=sub[2]==='sing'?v[1]:v[0];stem=`${subject} ___ ${v[2]} ${v[3]}.`;choices=[v[0],v[1],v[0]+'ing',v[0]+'s'];why=`${subject} ${sub[2]==='sing'?'là ngôi thứ ba số ít, động từ cần chia':'dùng động từ nguyên mẫu'}: ${correct}.`;}
+ }else if(type==='negative'){
+  if(isBe){correct=be(sub);stem=`${subject} ___ not ${bw[0]}.`;choices=['am','is','are','do'];why=`Phủ định với to be: ${subject} ${correct} not.`;}
+  else if(i%2===0){correct=aux(sub)==='does'?'doesn’t':'don’t';stem=`${subject} ___ ${v[0]} ${v[2]}.`;choices=['don’t','doesn’t','isn’t','aren’t'];why=`Phủ định động từ thường: ${subject} ${correct} + động từ nguyên mẫu.`;}
+  else{correct=v[0];stem=`${subject} ${aux(sub)==='does'?'doesn’t':'don’t'} ___ ${v[2]} ${v[3]}.`;choices=[v[0],v[1],v[0]+'ing',v[0]+'ed'];why=`Sau don't/doesn't, dùng động từ nguyên mẫu: ${v[0]}.`;}
+ }else{
+  if(isBe){correct=cap(be(sub));stem=`___ ${sub[0]} ${bw[0]}?`;choices=['Am','Is','Are','Does'];why=`Câu hỏi với to be: ${correct} ${sub[0]} ...?`;}
+  else if(i%2===0){correct=cap(aux(sub));stem=`___ ${sub[0]} ${v[0]} ${v[2]} ${v[3]}?`;choices=['Do','Does','Is','Are'];why=`Câu hỏi động từ thường với ${sub[0]} dùng ${correct}.`;}
+  else{correct=v[0];stem=`${cap(aux(sub))} ${sub[0]} ___ ${v[2]} ${v[3]}?`;choices=[v[0],v[1],v[0]+'ing',v[0]+'ed'];why=`Sau Do/Does dùng động từ nguyên mẫu ${v[0]}.`;}
+ }
+ choices=[...new Set(choices)];for(let fallback of ['am','is','are','do','does','doing','goes','going','plays','play']){if(choices.length>=4)break;if(!choices.includes(fallback))choices.push(fallback)}
+ // Ensure answer included and shuffle choice order consistently.
+ if(!choices.includes(correct))choices[3]=correct;
+ choices=shuffle(choices.slice(0,4));
+ return [stem,choices,choices.indexOf(correct),why,type];
+}
+let queue=[],difficulty='easy',asked=0,counts={affirmative:0,negative:0,interrogative:0};
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function buildQueue(){let n=difficulty==='hard'?50:30;let qs=['affirmative','negative','interrogative'].flatMap(k=>shuffle(Array.from({length:50},(_,i)=>makeQ(k,i))).slice(0,n));return shuffle(qs)}
+function rand(a,b){return a+Math.random()*(b-a)}function beep(f=600){if(!sound)return;try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();let o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;o.connect(g);g.connect(audio.destination);g.gain.setValueAtTime(.08,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.13);o.start();o.stop(audio.currentTime+.14)}catch(e){}}
+// Synthesized effects: no external sound files or internet required.
+let ropeNoiseAt=0, ropeBuffer=null, ropeSource=null, ropeGain=null;
+function tone(freq,duration=.13,kind='sine',volume=.08,delay=0,endFreq=null){
+ if(!sound)return;
+ try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();
+ const t=audio.currentTime+delay,o=audio.createOscillator(),g=audio.createGain();o.type=kind;
+ o.frequency.setValueAtTime(freq,t);if(endFreq)o.frequency.exponentialRampToValueAtTime(Math.max(30,endFreq),t+duration);
+ g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(volume,t+.012);
+ g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+duration+.02);
+ }catch(e){}
+}
+// Soft continuous fiber-on-pulley friction instead of electronic beeps.
+function ropeSound(active){
+ if(!sound||!active){if(ropeSource){try{ropeSource.stop()}catch(e){}ropeSource.disconnect();ropeSource=null}return}
+ if(ropeSource)return;
+ try{
+  audio=audio||new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();
+  if(!ropeBuffer){let sr=audio.sampleRate;ropeBuffer=audio.createBuffer(1,sr*2,sr);let data=ropeBuffer.getChannelData(0),smooth=0;
+   for(let i=0;i<data.length;i++){smooth=.92*smooth+.08*(Math.random()*2-1);data[i]=smooth*.75+(Math.random()*2-1)*.08}}
+  ropeSource=audio.createBufferSource();ropeSource.buffer=ropeBuffer;ropeSource.loop=true;
+  let filter=audio.createBiquadFilter();filter.type='bandpass';filter.frequency.value=540;filter.Q.value=.55;
+  ropeGain=audio.createGain();ropeGain.gain.value=.12;
+  ropeSource.connect(filter);filter.connect(ropeGain);ropeGain.connect(audio.destination);ropeSource.start();
+ }catch(e){ropeSource=null}
+}
+function playEffect(name){if(!sound)return;
+ if(name==='correct'){tone(523,.13,'sine',.11,0);tone(659,.13,'sine',.11,.12);tone(784,.23,'sine',.12,.24)}
+ if(name==='wrong'){tone(330,.20,'triangle',.11,0,240);tone(220,.3,'sawtooth',.055,.17,125)}
+}
+function resetItems(){items=[];for(let i=0;i<15;i++){let type=Math.random(),r=type<.2?12:type<.65?rand(18,29):rand(30,44),x,y,tries=0;do{x=rand(55,845);y=rand(190,495);tries++}while(tries<90&&items.some(o=>Math.hypot(o.x-x,o.y-y)<o.r+r+10));items.push({x,y,r,type:type<.2?'diamond':type<.82?'gold':'rock',value:type<.2?250:type<.82?Math.round(r*5):35})}}
+function start(){ropeSound(false);score=0;level=1;time=300;playing=true;paused=false;angle=0;hook={mode:'swing',len:48,target:null};difficulty=document.getElementById('difficulty').value;asked=0;counts={affirmative:0,negative:0,interrogative:0};queue=buildQueue();resetItems();modal.style.display='none';last=performance.now();update()}function update(){stats.textContent=`🏆 Điểm: ${score}  |  🎯 Màn: ${level}  |  ⏱️ ${Math.floor(Math.max(0,time)/60)}:${String(Math.ceil(Math.max(0,time))%60).padStart(2,"0")}  |  Mục tiêu: ${level*650}  |  📚 ${asked}/${difficulty==='hard'?150:90} câu`}
+function launch(){if(!playing||paused||hook.mode!=='swing')return;hook.mode='out';ropeSound(true)}function question(item){ropeSound(false);paused=true;let q=queue.pop();if(!q){playing=false;paused=true;alert(`Hoàn thành ${asked} câu! Điểm: ${score}.`);return}asked++;counts[q[4]]++;document.getElementById('question').textContent=q[0];let ans=document.getElementById('answers');ans.innerHTML='';document.getElementById('feedback').textContent='';document.getElementById('continue').style.display='none';q[1].forEach((s,i)=>{let b=document.createElement('button');b.textContent=s;b.onclick=()=>{[...ans.children].forEach(x=>x.disabled=true);let ok=i===q[2];if(ok){score+=item.value;playEffect('correct')}else playEffect('wrong');document.getElementById('feedback').textContent=(ok?`✅ Đúng! +${item.value} điểm. `:'❌ Chưa đúng. ')+q[3];document.getElementById('continue').style.display='inline-block';update()};ans.appendChild(b)});modal.style.display='flex'}
+document.getElementById('continue').onclick=()=>{modal.style.display='none';paused=false;hook={mode:'swing',len:48,target:null};if(score>=level*650){level++;time=300;resetItems()}else if(items.length<4)resetItems();update()};document.getElementById('start').onclick=start;document.getElementById('launch').onclick=launch;document.getElementById('sound').onclick=e=>{sound=!sound;if(!sound)ropeSound(false);else if(playing&&!paused&&(hook.mode==='out'||hook.mode==='back'))ropeSound(true);e.target.textContent=sound?'🔊 Âm thanh: Bật':'🔇 Âm thanh: Tắt'};cvs.addEventListener('pointerdown',launch);document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();launch()}});
+function draw(t){let dt=Math.min(.04,(t-last)/1000||0);last=t;ctx.clearRect(0,0,900,540);ctx.fillStyle='#9de1f7';ctx.fillRect(0,0,900,115);ctx.fillStyle='#ae6b3d';ctx.fillRect(0,115,900,425);for(let i=0;i<60;i++){ctx.fillStyle=i%2?'#b87849':'#9a5c34';ctx.beginPath();ctx.arc((i*137)%900,140+(i*89)%390,3+i%5,0,7);ctx.fill()}ctx.fillStyle='#38684b';ctx.fillRect(0,107,900,12);ctx.font='55px serif';ctx.fillText('👨‍🌾',415,83);ctx.font='19px system-ui';ctx.fillStyle='#172638';ctx.fillText('Đào vàng, luyện ngữ pháp!',15,35);
+if(playing&&!paused){time-=dt;if(time<=0){playing=false;time=0;ropeSound(false);alert(`Hết 5 phút vòng ${level}! Tổng điểm: ${score}. Nhấn Bắt đầu để chơi lại.`)}if(hook.mode==='swing'){angle+=dir*dt*1.45;if(Math.abs(angle)>.98)dir*=-1}else if(hook.mode==='out'){hook.len+=dt*480;let px=450+Math.sin(angle)*hook.len,py=95+Math.cos(angle)*hook.len;let found=items.find(o=>Math.hypot(px-o.x,py-o.y)<o.r+9);if(found){hook.target=found;hook.mode='back'}else if(px<0||px>900||py>540)hook.mode='back'}else if(hook.mode==='back'){hook.len-=dt*(hook.target?hook.target.type==='rock'?115:hook.target.r>30?160:240:480);if(hook.target){hook.target.x=450+Math.sin(angle)*hook.len;hook.target.y=95+Math.cos(angle)*hook.len}if(hook.len<=48){hook.len=48;let obj=hook.target;if(obj){items=items.filter(o=>o!==obj);question(obj)}else {hook.mode='swing';ropeSound(false)}}update()}
+}
+items.forEach(o=>{ctx.beginPath();if(o.type==='diamond'){ctx.fillStyle='#66eaff';ctx.moveTo(o.x,o.y-o.r);ctx.lineTo(o.x+o.r,o.y);ctx.lineTo(o.x,o.y+o.r);ctx.lineTo(o.x-o.r,o.y);ctx.closePath()}else{ctx.fillStyle=o.type==='gold'?'#ffce38':'#73757a';ctx.ellipse(o.x,o.y,o.r,o.r*.76,-.25,0,7)}ctx.fill();ctx.strokeStyle='#67421d';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#302918';ctx.font='bold 15px system-ui';ctx.textAlign='center';ctx.fillText(o.value,o.x,o.y+5);ctx.textAlign='start'});let hx=450+Math.sin(angle)*hook.len,hy=95+Math.cos(angle)*hook.len;ctx.strokeStyle='#35302b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(450,95);ctx.lineTo(hx,hy);ctx.stroke();ctx.font='30px serif';ctx.fillText('⚓',hx-14,hy+12);requestAnimationFrame(draw)}requestAnimationFrame(draw);update();
+</script></html>
